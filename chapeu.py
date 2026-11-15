@@ -28,8 +28,14 @@ FIO_D = 12.0            # furo central para o fio (sai por cima, entre os parafu
 
 DISCO_T = 3.0           # espessura do disco preso entre chapa e bocal
 PAREDE = 2.4            # espessura da aba (medida perpendicular à superfície)
-ABA_D = 110.0           # diâmetro externo da saia (câmera ~70 -> folga de ~20 de cada lado)
 ANGULO = 45.0           # inclinação da aba em relação à horizontal (45 = imprime sem suporte)
+
+# Dois modelos:
+#   "curto": o 1º desenho, aba larga Ø130 a 45° e pingadeira de 6 mm (altura 32,6 mm)
+#   "saia":  aba Ø110 e saia vertical descendo pelo corpo parado da câmera
+MODELO = "curto"
+ABA_D = {"curto": 130.0, "saia": 110.0}   # diâmetro externo da aba
+PINGADEIRA = 6.0        # (curto) altura da pingadeira vertical na borda
 
 # A saia vertical desce pelo corpo parado da câmera e termina acima da cabeça que gira.
 CAM_ATE_LINHA = 65.0    # do fim da rosca (boca do bocal) até a linha preta (início da cabeça)
@@ -42,29 +48,33 @@ SEG = 180
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "desenhos")
 
 
-def perfil():
+def perfil(modelo=MODELO):
     """Meia-seção (r, z) na posição de impressão: z = 0 é a face que encosta na chapa."""
+    aba_d = ABA_D[modelo]
     t, w = DISCO_T, PAREDE
     tan = np.tan(np.radians(ANGULO))
     wh = w / np.sin(np.radians(ANGULO))      # espessura medida na horizontal
     r0 = BOCAL_D / 2 + BOCAL_FOLGA           # onde a aba começa (por dentro)
-    rb = ABA_D / 2 - w                       # raio interno da pingadeira
+    rb = aba_d / 2 - w                       # raio interno da pingadeira
     zt = t + (rb - r0) * tan                 # altura da aba (por dentro) na borda
-    z_fim = t + BOCAL_H + CAM_ATE_LINHA - FIM_ACIMA_LINHA   # fim da saia, medido da chapa
-    assert z_fim > zt + 2, "saia curta demais: aumente CAM_ATE_LINHA ou diminua ABA_D"
+    if modelo == "curto":
+        z_fim = zt + PINGADEIRA
+    else:
+        z_fim = t + BOCAL_H + CAM_ATE_LINHA - FIM_ACIMA_LINHA   # fim da saia, medido da chapa
+        assert z_fim > zt + 2, "saia curta demais: aumente CAM_ATE_LINHA ou diminua ABA_D"
     r_out0 = r0 + wh - t / tan               # face de fora da aba na mesa
-    z_out_b = (ABA_D / 2 - r_out0) * tan     # face de fora encontrando a pingadeira
+    z_out_b = (aba_d / 2 - r_out0) * tan     # face de fora encontrando a pingadeira
     pts = [
         (FIO_D / 2, 0), (r_out0, 0),
-        (ABA_D / 2, z_out_b), (ABA_D / 2, z_fim),
+        (aba_d / 2, z_out_b), (aba_d / 2, z_fim),
         (rb, z_fim), (rb, zt),
         (r0, t), (FIO_D / 2, t),
     ]
     return pts, z_fim
 
 
-def chapeu():
-    pts, _ = perfil()
+def chapeu(modelo=MODELO):
+    pts, _ = perfil(modelo)
     corpo = CrossSection([pts]).revolve(SEG)
     furo = Manifold.cylinder(DISCO_T * 3, FURO_D / 2, FURO_D / 2, 48).translate([0, 0, -DISCO_T])
     for x in (-FURO_ENTRE / 2, FURO_ENTRE / 2):
@@ -84,7 +94,7 @@ def previa_corte(path):
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon, Rectangle
 
-    pts, altura = perfil()
+    pts, altura = perfil(MODELO)
     fig, ax = plt.subplots(figsize=(8, 7))
     for s in (1, -1):
         uso = [(s * r, -z) for r, z in pts]             # vira: z para baixo
@@ -107,7 +117,7 @@ def previa_corte(path):
     ax.set_aspect("equal")
     ax.set_xlim(-80, 80)
     ax.set_ylim(z0 - CAM_ATE_LINHA - 75, 15)
-    ax.set_title(f"Chapéu Ø{ABA_D:.0f}, altura {altura:.1f} mm, saia até {FIM_ACIMA_LINHA:.0f} mm acima da linha (corte, uso)")
+    ax.set_title(f"Chapéu {MODELO} Ø{ABA_D[MODELO]:.0f}, altura {altura:.1f} mm (corte, posição de uso)")
     ax.grid(alpha=0.3)
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)

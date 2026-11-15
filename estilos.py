@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
     os.makedirs(OUT, exist_ok=True)
     from chapeu import chapeu
-    pecas = {"v1 (saia)": to_trimesh(chapeu())}
+    pecas = {"v1 (saia)": to_trimesh(chapeu("saia"))}
     for nome in ESTILOS:
         tm = to_trimesh(chapeu_estilo(nome))
         assert tm.is_watertight, nome
