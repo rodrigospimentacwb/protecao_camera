@@ -32,9 +32,8 @@ PAREDE = 2.4            # espessura da aba (medida perpendicular à superfície)
 ANGULO = 45.0           # inclinação da aba em relação à horizontal (45 = imprime sem suporte)
 
 # Dois modelos:
-#   "curto": o 1º desenho, aba larga Ø130 a 45° e pingadeira de 6 mm (altura 32,6 mm)
+#   "curto": aba larga Ø130 a 45° e pingadeira de 6 mm (altura 32,6 mm)
 #   "saia":  aba Ø110 e saia vertical descendo pelo corpo parado da câmera
-MODELO = "curto"
 ABA_D = {"curto": 130.0, "saia": 110.0}   # diâmetro externo da aba
 PINGADEIRA = 6.0        # (curto) altura da pingadeira vertical na borda
 
@@ -49,7 +48,7 @@ SEG = 180
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "desenhos", "estilos")
 
 
-def perfil(modelo=MODELO):
+def perfil(modelo):
     """Meia-seção (r, z) na posição de impressão: z = 0 é a face que encosta na chapa."""
     aba_d = ABA_D[modelo]
     t, w = DISCO_T, PAREDE
@@ -74,7 +73,7 @@ def perfil(modelo=MODELO):
     return pts, z_fim
 
 
-def chapeu(modelo=MODELO):
+def chapeu(modelo):
     pts, _ = perfil(modelo)
     corpo = CrossSection([pts]).revolve(SEG)
     furo = Manifold.cylinder(DISCO_T * 3, FURO_D / 2, FURO_D / 2, 48).translate([0, 0, -DISCO_T])
@@ -88,7 +87,7 @@ def to_trimesh(m):
     return trimesh.Trimesh(vertices=np.array(mesh.vert_properties)[:, :3], faces=np.array(mesh.tri_verts))
 
 
-def previa_corte(path, modelo=MODELO):
+def previa_corte(path, modelo):
     """Corte lateral montado (posição de uso): chapa em cima, câmera pendurada embaixo."""
     import matplotlib
     matplotlib.use("Agg")
