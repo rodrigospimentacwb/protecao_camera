@@ -30,6 +30,8 @@ Todos ficam em `desenhos/estilos/`, em `.stl` e `.3mf`. Escolha o seu favorito. 
 
 `corte_curto.png` e `corte_saia.png` mostram o corte montado no bocal e na câmera.
 
+`facetado_curto_bambu.3mf` é um projeto pronto do Bambu Studio para a Bambu Lab A1 (Generic PETG, 0.28mm Extra Draft, 3 paredes, sem suporte). Abra e salve com outro nome: os outros `.3mf` são recriados pelo script.
+
 ## Impressão
 
 - Disco plano na mesa e sem suporte. Nenhum trecho passa de 45°, e o script confere isso.
