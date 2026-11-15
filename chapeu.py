@@ -11,7 +11,8 @@ cima e para fora a 45° -> sem suporte. PETG branco, 3-4 perímetros.
 
 Todas as medidas em mm. Ajuste os PARÂMETROS e rode:
     .venv/bin/python chapeu.py
-Gera em desenhos/: chapeu.stl, chapeu.3mf e previa_corte.png / previa_3d.png.
+Gera em desenhos/estilos/: curto.stl/.3mf, saia.stl/.3mf e corte_curto.png / corte_saia.png.
+(O estilos.py gera estes e todos os outros estilos de uma vez.)
 """
 import os
 import numpy as np
@@ -45,7 +46,7 @@ FIM_ACIMA_LINHA = 10.0  # a saia termina esta distância acima da linha preta
 CAM_D = 70.0
 SEG = 180
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "desenhos")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "desenhos", "estilos")
 
 
 def perfil(modelo=MODELO):
@@ -87,14 +88,14 @@ def to_trimesh(m):
     return trimesh.Trimesh(vertices=np.array(mesh.vert_properties)[:, :3], faces=np.array(mesh.tri_verts))
 
 
-def previa_corte(path):
+def previa_corte(path, modelo=MODELO):
     """Corte lateral montado (posição de uso): chapa em cima, câmera pendurada embaixo."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon, Rectangle
 
-    pts, altura = perfil(MODELO)
+    pts, altura = perfil(modelo)
     fig, ax = plt.subplots(figsize=(8, 7))
     for s in (1, -1):
         uso = [(s * r, -z) for r, z in pts]             # vira: z para baixo
@@ -117,47 +118,18 @@ def previa_corte(path):
     ax.set_aspect("equal")
     ax.set_xlim(-80, 80)
     ax.set_ylim(z0 - CAM_ATE_LINHA - 75, 15)
-    ax.set_title(f"Chapéu {MODELO} Ø{ABA_D[MODELO]:.0f}, altura {altura:.1f} mm (corte, posição de uso)")
+    ax.set_title(f"Chapéu {modelo} Ø{ABA_D[modelo]:.0f}, altura {altura:.1f} mm (corte, posição de uso)")
     ax.grid(alpha=0.3)
-    fig.savefig(path, dpi=120, bbox_inches="tight")
-    plt.close(fig)
-
-
-def previa_3d(path, m):
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-    t = to_trimesh(m)
-    v = t.vertices.copy()
-    v[:, 2] = -v[:, 2]                     # posição de uso
-    tris = v[t.faces]
-    luz = np.array([-0.4, -0.5, 0.8]); luz /= np.linalg.norm(luz)
-    n = -t.face_normals.copy(); n[:, :2] *= -1
-    shade = 0.35 + 0.65 * np.clip(np.abs(n @ luz), 0, 1)
-    cores = np.c_[np.outer(shade, [0.85, 0.9, 0.9]), np.ones(len(shade))]
-    fig = plt.figure(figsize=(7, 6))
-    ax = fig.add_subplot(projection="3d")
-    ax.add_collection3d(Poly3DCollection(tris, facecolors=cores, edgecolor="none"))
-    ax.set_xlim(-70, 70); ax.set_ylim(-70, 70); ax.set_zlim(-100, 40)
-    ax.view_init(elev=-25, azim=35)
-    ax.set_box_aspect((1, 1, 1))
-    ax.axis("off")
-    ax.set_title("Vista de baixo (lado do bocal)")
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
 
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    m = chapeu()
-    tm = to_trimesh(m)
-    assert tm.is_watertight, "malha não fechada"
-    tm.export(os.path.join(OUT, "chapeu.stl"))
-    tm.export(os.path.join(OUT, "chapeu.3mf"))
-    previa_corte(os.path.join(OUT, "previa_corte.png"))
-    previa_3d(os.path.join(OUT, "previa_3d.png"), m)
-    _, h = perfil()
-    print(f"volume {tm.volume / 1000:.1f} cm³ (~{tm.volume / 1000 * 1.27:.0f} g PETG maciço), "
-          f"tamanho {np.ptp(tm.vertices, axis=0).round(1)} mm, altura {h:.1f}")
+    for modelo in ABA_D:
+        tm = to_trimesh(chapeu(modelo))
+        assert tm.is_watertight, "malha não fechada"
+        tm.export(os.path.join(OUT, f"{modelo}.stl"))
+        tm.export(os.path.join(OUT, f"{modelo}.3mf"))
+        previa_corte(os.path.join(OUT, f"corte_{modelo}.png"), modelo)
+        print(f"{modelo:6s} ~{tm.volume / 1000 * 1.27:.0f} g PETG, tamanho {np.ptp(tm.vertices, axis=0).round(1)} mm")

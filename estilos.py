@@ -7,7 +7,8 @@ z cresce para baixo no uso (na impressão, para cima: disco na mesa).
 Regra de impressão sem suporte: nenhum trecho do perfil pode passar de 45° (|dr/dz| <= 1).
 
     .venv/bin/python estilos.py
-Gera em desenhos/estilos/: <estilo>.stl, <estilo>.3mf e comparacao.png
+Gera TUDO em desenhos/estilos/: <estilo>.stl, <estilo>.3mf, comparacao.png e os cortes
+(curto e saia vêm do chapeu.py; curto é o 1º desenho).
 """
 import os
 import numpy as np
@@ -61,11 +62,6 @@ def perfil_facetado():
 
 
 # ---- versões curtas: aba larga (~Ø130) terminando perto da boca do bocal, como a 1ª ideia ----
-def perfil_liso_curto():
-    """O chapéu curto original: aba reta a 45° e pingadeira de 6 mm."""
-    return [(R0, 0), (65, 65 - R0), (65, 65 - R0 + 6)]
-
-
 def perfil_sino_curto():
     """Guarda-chuva: ombro a 45° que vai abrindo em curva até a borda."""
     return [(R0, 0)] + spline([(R0 + 6, 6), (50, 11), (56, 17.5), (61, 24), (64, 30), (65, 34)])
@@ -87,7 +83,6 @@ ESTILOS = {
     "sino": (perfil_sino, 0, 0),
     "pagode": (perfil_pagode, 0, 0),
     "facetado": (perfil_facetado, 8, 40),
-    "liso_curto": (perfil_liso_curto, 0, 0),
     "sino_curto": (perfil_sino_curto, 0, 0),
     "pagode_curto": (perfil_pagode_curto, 0, 0),
     "facetado_curto": (perfil_facetado_curto, 8, 25),
@@ -176,16 +171,20 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     os.makedirs(OUT, exist_ok=True)
-    from chapeu import chapeu
-    pecas = {"v1 (saia)": to_trimesh(chapeu("saia"))}
-    for nome in ESTILOS:
-        tm = to_trimesh(chapeu_estilo(nome))
+    from chapeu import chapeu, previa_corte
+    for modelo in ("curto", "saia"):
+        previa_corte(os.path.join(OUT, f"corte_{modelo}.png"), modelo)
+    # ordem da comparação: linha de cima com saia, linha de baixo curtos
+    ordem = ["saia", "sino", "pagode", "facetado", "curto", "sino_curto", "pagode_curto", "facetado_curto"]
+    pecas = {}
+    for nome in ordem:
+        tm = to_trimesh(chapeu(nome) if nome in ("curto", "saia") else chapeu_estilo(nome))
         assert tm.is_watertight, nome
         tm.export(os.path.join(OUT, f"{nome}.stl"))
         tm.export(os.path.join(OUT, f"{nome}.3mf"))
         pecas[nome] = tm
         ext = np.ptp(tm.vertices, axis=0)
-        print(f"{nome:9s} Ø{max(ext[:2]):.0f} x {ext[2]:.0f} mm, ~{tm.volume / 1000 * 1.27:.0f} g")
+        print(f"{nome:15s} Ø{max(ext[:2]):.0f} x {ext[2]:.0f} mm, ~{tm.volume / 1000 * 1.27:.0f} g")
 
     fig = plt.figure(figsize=(18, 10), facecolor="#2b2f33")
     for i, (nome, tm) in enumerate(pecas.items()):
